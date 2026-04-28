@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: odoo
+      POSTGRES_DB: postgres
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+
+  odoo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - db
+    ports:
+      - "8069:8069"
+    volumes:
+      - ./docker/odoo.conf:/etc/odoo/odoo.conf:ro
+      - odoo-filestore:/var/lib/odoo
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1 # Prevents docker byte code caching for live development
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./addons
+          target: /opt/odoo/addons
+        - action: sync+restart
+          path: ./odoo
+          target: /opt/odoo/odoo
+        - action: rebuild
+          path: ./requirements.txt
+    command: >
+      python odoo-bin -c /etc/odoo/odoo.conf
+
+volumes:
+  pg-data:
+  odoo-filestore:
