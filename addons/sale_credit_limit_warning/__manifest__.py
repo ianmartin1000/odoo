@@ -11,7 +11,9 @@ customer's outstanding credit exposure (posted + to-invoice + this order)
 relative to their credit limit.
     """,
     'depends': ['sale'],
-    'data': [],
+    'data': [
+        'views/sale_order_views.xml',
+    ],
     'installable': True,
     'license': 'LGPL-3',
 }

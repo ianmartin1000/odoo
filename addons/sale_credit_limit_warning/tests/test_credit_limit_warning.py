@@ -1,7 +1,9 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+from lxml import etree
+
 from odoo.fields import Command
-from odoo.tests import tagged
+from odoo.tests import tagged, users
 from odoo.tools import formatLang
 
 from odoo.addons.sale.tests.common import SaleCommon
@@ -18,6 +20,35 @@ class TestSaleOrderCreditLimitWarning(SaleCommon):
         # setup convention in addons/sale/tests/test_credit_limit.py.
         cls.env.company.account_use_credit_limit = True
         cls.customer = cls.env['res.partner'].create({'name': 'Credit Warning Customer'})
+
+        # A salesperson with no Accounting access, mirroring the
+        # 'notaccountman' fixture in addons/sale/tests/test_credit_limit.py, to
+        # verify the new compute fields stay readable without AccessError.
+        cls.sales_only_user = cls.env['res.users'].with_context(no_reset_password=True).create({
+            'name': 'Sales Only User',
+            'login': 'credit_warning_salesman',
+            'email': 'credit_warning_salesman@example.com',
+            'groups_id': [Command.set(cls.env.ref('sales_team.group_sale_salesman').ids)],
+        })
+
+        # Over-limit order for the access test below, created as superuser
+        # since the restricted salesperson cannot write partner.credit_limit
+        # (Contact management right) — only the read side is under test there.
+        # A dedicated customer keeps this fixture isolated from cls.customer,
+        # which other tests rely on having no credit_limit set by default.
+        cls.over_limit_customer = cls.env['res.partner'].create({
+            'name': 'Over Limit Customer',
+            'credit_limit': 1000.0,
+        })
+        cls.over_limit_order = cls.env['sale.order'].create({
+            'partner_id': cls.over_limit_customer.id,
+            'order_line': [Command.create({
+                'product_id': cls.product.id,
+                'product_uom_qty': 1,
+                'price_unit': 900.0,  # 900 / 1000 = 0.9 -> 'warning'
+                'tax_id': False,
+            })],
+        })
 
     def _create_order(self, amount, partner=None):
         partner = partner or self.customer
@@ -126,3 +157,50 @@ class TestSaleOrderCreditLimitWarning(SaleCommon):
         order = self._create_order(700.0)  # (500 + 700) / 1000 = 1.2 -> would be 'danger'
         self.assertEqual(order.credit_limit_warning_level, 'none')
         self.assertFalse(order.credit_limit_warning_message)
+
+    @users('credit_warning_salesman')
+    def test_credit_limit_warning_access_without_accounting_group(self):
+        """AC-ERROR-1 regression: a salesperson with only
+        sales_team.group_sale_salesman (no Accounting access) must be able to
+        read credit_limit_warning_level/_message on an over-limit order
+        without hitting an AccessError — mirrors
+        addons/sale/tests/test_credit_limit.py::test_credit_limit_access."""
+        for group in self.env['res.partner']._fields['credit'].groups.split(','):
+            self.assertFalse(self.env.user.has_group(group))
+
+        order = self.over_limit_order.with_env(self.env)
+        self.assertEqual(order.credit_limit_warning_level, 'warning')
+        self.assertTrue(order.credit_limit_warning_message)
+
+    def test_view_arch_hides_stock_banner_and_adds_two_tier_warning(self):
+        """The inherited view must hide the stock partner_credit_warning banner
+        and add the warning/danger pair driven by credit_limit_warning_level,
+        following the two-tier alert-warning/alert-danger idiom in
+        addons/account_edi/views/account_move_views.xml."""
+        arch = self.env['sale.order'].get_view(view_id=self.env.ref('sale.view_order_form').id)['arch']
+        tree = etree.fromstring(arch)
+
+        stock_banners = tree.xpath("//div[hasclass('alert-warning')][field[@name='partner_credit_warning']]")
+        self.assertEqual(len(stock_banners), 1, "The stock credit-warning banner should still be present in the arch")
+        self.assertEqual(
+            stock_banners[0].get('invisible'), '1', "The stock banner must be forced invisible on this view",
+        )
+
+        warning_message_divs = tree.xpath("//div[field[@name='credit_limit_warning_message']]")
+        self.assertEqual(len(warning_message_divs), 2, "Both the warning and danger banners must be present")
+
+        warning_div = next(d for d in warning_message_divs if 'alert-warning' in d.get('class', ''))
+        danger_div = next(d for d in warning_message_divs if 'alert-danger' in d.get('class', ''))
+        self.assertEqual(warning_div.get('invisible'), "credit_limit_warning_level != 'warning'")
+        self.assertEqual(danger_div.get('invisible'), "credit_limit_warning_level != 'danger'")
+
+    def test_warning_level_flips_as_order_lines_change(self):
+        """End-to-end reactivity: editing order lines on a real quotation (not
+        direct field assignment) must flip credit_limit_warning_level from
+        'none' to 'warning' as amount_total crosses the 80% boundary."""
+        self.customer.credit_limit = 1000.0
+        order = self._create_order(700.0)  # 700 / 1000 = 0.7 -> 'none'
+        self.assertEqual(order.credit_limit_warning_level, 'none')
+
+        order.order_line.price_unit = 850.0  # 850 / 1000 = 0.85 -> 'warning'
+        self.assertEqual(order.credit_limit_warning_level, 'warning')

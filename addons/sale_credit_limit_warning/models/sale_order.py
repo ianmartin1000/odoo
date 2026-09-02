@@ -34,14 +34,22 @@ class SaleOrder(models.Model):
             order.credit_limit_warning_level = 'none'
             order.credit_limit_warning_message = False
 
+            # Only show warning on quotations/proposals; confirmed/invoiced orders are
+            # no longer editable, so warning would be informational only. Also gated on
+            # the company's account_use_credit_limit feature flag, mirroring stock behavior.
             if order.state not in ('draft', 'sent') or not order.company_id.account_use_credit_limit:
                 continue
 
+            # Use .sudo() to read partner credit/limit fields: this allows salespeople
+            # without Accounting access (i.e., not in account.group_account_invoice) to
+            # still see the warning. Mirrors the pattern at addons/sale/models/sale_order.py:779.
             partner = order.partner_id.sudo().commercial_partner_id
             credit_limit = partner.credit_limit
             if not credit_limit:
                 continue
 
+            # Convert order amount to company currency using the order's currency_rate,
+            # matching the existing pattern at addons/sale/models/sale_order.py:780.
             order_sudo = order.sudo()
             current_amount = order_sudo.amount_total / order_sudo.currency_rate
             outstanding = partner.credit + partner.credit_to_invoice

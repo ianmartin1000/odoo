@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_order_form_credit_limit_warning" model="ir.ui.view">
+        <field name="name">sale.order.form.credit.limit.warning</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <!-- Hide the stock (accounting-driven) credit warning banner on this view:
+                 it is superseded here by the two order-level banners below, which are
+                 driven by credit_limit_warning_level so salespeople see the warning
+                 without needing Accounting access. -->
+            <xpath expr="//div[hasclass('alert-warning')][field[@name='partner_credit_warning']]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//div[hasclass('alert-warning')][field[@name='partner_credit_warning']]" position="after">
+                <div class="alert alert-warning" role="alert" invisible="credit_limit_warning_level != 'warning'">
+                    <field name="credit_limit_warning_message"/>
+                </div>
+                <div class="alert alert-danger" role="alert" invisible="credit_limit_warning_level != 'danger'">
+                    <field name="credit_limit_warning_message"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
