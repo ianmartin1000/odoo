@@ -46,7 +46,7 @@ Frontend JS libs (jQuery, Bootstrap, Luxon, Chart.js, PDF.js, DOMPurify, FullCal
 ## Component Structure
 
 - `odoo/` — core framework/runtime: ORM (`models.py` ~7.6k lines, `fields.py` ~5.4k lines, `api.py` ~1.6k lines), HTTP layer (`http.py`), module graph/loading/migration (`odoo/modules/`), shared utilities (`odoo/tools/`), test framework (`odoo/tests/`), service/worker layer (`odoo/service/`), low-level DB access (`sql_db.py`).
-- `addons/` — 621 first-party modules (business apps + technical modules like `base`, `web`, `mail`).
+- `addons/` — 621 first-party stock modules (business apps + technical modules like `base`, `web`, `mail`) + custom addon modules (e.g., `sale_credit_limit_warning`).
 - `odoo/addons/` — small set of framework-bootstrapping addons (`base`, `test_access_rights`, etc.).
 - `odoo-bin` — entry point (`python odoo-bin -c <config> [options]`); `odoo/cli/` dispatches CLI commands; `odoo/__main__.py` allows `python -m odoo`.
 

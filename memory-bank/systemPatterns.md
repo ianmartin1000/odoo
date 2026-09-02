@@ -16,7 +16,7 @@
 
 ## Architecture Overview
 
-Monolithic Odoo source checkout — no custom addons present yet (stock upstream Odoo 18.0).
+Monolithic Odoo 18.0 source checkout. As of Phase 1 of customer-credit-limit-warning, the first custom addon module `addons/sale_credit_limit_warning/` has been introduced; previously the repository contained only stock upstream Odoo modules.
 
 - `odoo/` — core framework/runtime, not itself an addon:
   - `odoo/models.py` — `BaseModel`, ORM core (CRUD, recordsets, `_inherit`/`_inherits`, SQL generation)
