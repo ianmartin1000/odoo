@@ -2,16 +2,16 @@
 slug: customer-credit-limit-warning
 legacy_id:
 feature: customer-credit-limit-warning
-status: PLANNING_COMPLETE
+status: IN_PROGRESS
 ---
 
 # customer-credit-limit-warning: Customer Credit Limit Warning
 
 **Complexity**: Level 2
-**Status**: PLANNING_COMPLETE
+**Status**: IN_PROGRESS
 **Roadmap**: customer-credit-limit-warning
 **Branch**: feature/customer-credit-limit-warning
-**Worktree**: N/A
+**Worktree**: C:/Users/ian/odoo
 
 ## Task Description
 
@@ -157,16 +157,16 @@ Specification is concrete — proceed to implementation planning. Two interpreti
 ## Implementation Roadmap
 
 ### New Source Files (pin path + extension)
-- [ ] `addons/sale_credit_limit_warning/__init__.py` — module init, imports `models`
-- [ ] `addons/sale_credit_limit_warning/__manifest__.py` — manifest: `depends: ['sale']`, `category`, `license: LGPL-3` (match repo license), `data: ['views/sale_order_views.xml']`
-- [ ] `addons/sale_credit_limit_warning/models/__init__.py` — imports `sale_order`
-- [ ] `addons/sale_credit_limit_warning/models/sale_order.py` — `_inherit = 'sale.order'`; adds `credit_limit_warning_level` (Selection, `store=False`) and `credit_limit_warning_message` (Text, `store=False`), `@api.depends('partner_id', 'order_line.price_total', 'amount_total', 'company_id')` compute method using `.sudo()`
+- [x] `addons/sale_credit_limit_warning/__init__.py` — module init, imports `models`
+- [x] `addons/sale_credit_limit_warning/__manifest__.py` — manifest: `depends: ['sale']`, `category`, `license: LGPL-3` (match repo license); `data: ['views/sale_order_views.xml']` to be added in Phase 2 when the view file exists
+- [x] `addons/sale_credit_limit_warning/models/__init__.py` — imports `sale_order`
+- [x] `addons/sale_credit_limit_warning/models/sale_order.py` — `_inherit = 'sale.order'`; adds `credit_limit_warning_level` (Selection, `store=False`) and `credit_limit_warning_message` (Text, `store=False`), `@api.depends('partner_id', 'order_line.price_total', 'amount_total', 'company_id', 'state')` compute method using `.sudo()`, gated on `state in ('draft', 'sent')` and `company_id.account_use_credit_limit` (added per code review, matching stock's own gating)
 - [ ] `addons/sale_credit_limit_warning/views/sale_order_views.xml` — `<record>` inheriting `sale.view_order_form`: xpath to `invisible=1` the stock `partner_credit_warning` div, xpath `position="after"` to insert the new `alert-warning`/`alert-danger` divs
-- [ ] `addons/sale_credit_limit_warning/tests/__init__.py` — imports `test_credit_limit_warning`
-- [ ] `addons/sale_credit_limit_warning/tests/test_credit_limit_warning.py` — `TransactionCase` (or `SaleCommon`-based) tests per Test Strategy above
+- [x] `addons/sale_credit_limit_warning/tests/__init__.py` — imports `test_credit_limit_warning`
+- [x] `addons/sale_credit_limit_warning/tests/test_credit_limit_warning.py` — `TransactionCase` (`SaleCommon`-based) tests per Test Strategy above; 7 tests (5 planned + 2 added for the state/company-toggle gating found in code review)
 
 ### Phases
-- [ ] Phase 1: Module scaffold + compute logic (`__init__.py`, `__manifest__.py`, `models/`, `tests/test_credit_limit_warning.py` compute tests) — delivers `credit_limit_warning_level`/`credit_limit_warning_message` on `sale.order`, verifiable via ORM/shell even without the view yet
+- [x] Phase 1: Module scaffold + compute logic (`__init__.py`, `__manifest__.py`, `models/`, `tests/test_credit_limit_warning.py` compute tests) — delivers `credit_limit_warning_level`/`credit_limit_warning_message` on `sale.order`, verifiable via ORM/shell even without the view yet
 - [ ] Phase 2: View integration + access/e2e tests (`views/sale_order_views.xml`, remaining tests) — delivers the full entry-to-success flow: banner visible on the Sale Order form per AC-ENTRY-1/AC-HAPPY-1/2/3/AC-ERROR-1
 
 ### Observability Requirements
@@ -186,11 +186,26 @@ Specification is concrete — proceed to implementation planning. Two interpreti
 
 **Build Status**: IDLE
 **Current Phase**: BUILD
-**Last Completed**: Step 6 (Planning finalized, PLANNING_COMPLETE)
+**Phase Number**: 1 of 2
+**Is Multi-Phase**: YES
+**Last Completed**: Step 11 (Phase 1 committed to feature/customer-credit-limit-warning)
 **Can Resume**: NO
+
+### Current Build Step
+**Step**: Step 11 - Git Completion
+**Status**: COMPLETE
 
 ### Active Sub-Agents
 (none)
 
 ### Completed Steps
-(none)
+- Step 0.5 Git Setup: COMPLETE — single-worktree checkout at C:/Users/ian/odoo, already on feature/customer-credit-limit-warning (no separate worktree_root worktree in use for this repo)
+- Step 1 Read Task Context: COMPLETE — Phase 1 of 2 identified (Module scaffold + compute logic)
+- Step 3 TDD Agent: COMPLETE — 5 tests written (RED→GREEN) in addons/sale_credit_limit_warning/tests/test_credit_limit_warning.py against models/sale_order.py compute fields (work picked up from a prior interrupted build attempt's uncommitted files, verified against the plan)
+- Step 6/7 Test Execution + Integration Verification: COMPLETE — module installed and full test run executed in the project's real Docker/Postgres environment (`docker compose build odoo` + `odoo-bin -i sale_credit_limit_warning --test-enable --test-tags /sale_credit_limit_warning --stop-after-init`); initial run: 5/5 tests passing, 0 failed, 0 errors
+- Step 8 Code Reviewer Agent: COMPLETE — 1 BLOCKING issue found (compute missing `order.state`/`company_id.account_use_credit_limit` gating vs. the stock precedent the spec cites) + 3 non-blocking suggestions; security/dependency review PASS
+- Fix + re-verify: COMPLETE — added state/company-toggle gating to `_compute_credit_limit_warning`, added 2 regression tests (confirmed-order gating, feature-disabled gating); re-ran full Docker test cycle — 7/7 tests passing, 0 failed, 0 errors
+- Step 10 Update Memory Bank: COMPLETE — this file's Implementation Roadmap (file + phase checkboxes) and Execution State updated
+
+### Guard & Recovery Log
+- Phase 1: found untracked, uncommitted Phase 1 files already present in the worktree at build start (from a previously interrupted build for this same slug — the module scaffold, compute logic, and 5 of the 7 tests). Verified their content against the plan rather than re-writing from scratch, then ran them through the full review→fix→re-verify cycle before committing. No files were lost; commit-guard C1/C2/C3 all passed on the first commit attempt.
