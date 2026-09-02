@@ -11,9 +11,9 @@ This section is auto-managed by `/bmb:init`. Do not edit manually.
 ## Git & Branching (v2)
 
 ```yaml
-metadata_branch: main
-protected_branches: [main]
-pr_target: main
+metadata_branch: banyan
+protected_branches: [banyan]
+pr_target: banyan
 sync_automation: none
 archive_strategy: local-merge
 worktree_root: ~/banyan-wt/odoo/
