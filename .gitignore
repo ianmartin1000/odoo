@@ -7,6 +7,16 @@ _build/
 !.github
 !.mailmap
 !.weblate.json
+!memory-bank/tasks/.gitkeep
+!memory-bank/roadmap/.gitkeep
+!memory-bank/roadmap/versions/.gitkeep
+!memory-bank/creative/.gitkeep
+!memory-bank/reflection/.gitkeep
+!memory-bank/archive/.gitkeep
+!memory-bank/agent-rules/_learned/.gitkeep
+
+# memory-bank advisory cache (gitignored, never a truth source)
+memory-bank/.local/
 # compiled python files
 *.py[co]
 __pycache__/
